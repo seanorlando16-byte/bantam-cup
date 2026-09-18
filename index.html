@@ -605,6 +605,14 @@ function onState(state){
   live.courses = state.courses;
   live.matches = state.matches;
   loaded = true;
+  // The background refresh above runs every few seconds so scores update
+  // live for everyone watching — but while you're on the Admin screen
+  // picking pairings (or editing courses/roster), it was rebuilding those
+  // dropdowns from scratch before you got to hit "Save," snapping your
+  // in-progress pick back to "— Select —". Admin already re-renders itself
+  // right after every successful save, so it's safe to just skip this
+  // background re-render while sitting on that screen.
+  if(Router.route && Router.route.name === 'admin') return;
   render();
 }
 
