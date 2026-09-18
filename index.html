@@ -217,6 +217,18 @@
   table.scorecard tbody th{color:var(--ice-dim);text-align:left;font-size:10px;text-transform:uppercase;background:var(--panel);position:sticky;left:0;}
   table.scorecard tbody td{color:var(--ice);background:var(--panel);}
   table.scorecard tbody tr:nth-child(2) td{color:var(--ice-dim);}
+  table.scorecard tr.team-best-row th{font-size:9.5px;}
+  table.scorecard tr.team-best-row.a th{color:var(--a-color);}
+  table.scorecard tr.team-best-row.b th{color:var(--gold-bright);}
+  table.scorecard tr.team-best-row td.tb-empty{color:var(--ice-dim);opacity:0.45;}
+  table.scorecard tr.team-best-row.a td.tb-filled{color:var(--a-color);font-weight:600;}
+  table.scorecard tr.team-best-row.b td.tb-filled{color:var(--gold-bright);font-weight:600;}
+  table.scorecard tr.team-best-row td.tb-win{background:rgba(233,239,248,0.08);box-shadow:inset 0 0 0 1px rgba(233,239,248,0.18);border-radius:4px;}
+  table.scorecard tr.match-status-row th{font-size:9.5px;}
+  table.scorecard tr.match-status-row td.ms-empty{color:var(--ice-dim);opacity:0.45;}
+  table.scorecard tr.match-status-row td.ms-as{color:var(--ice);font-weight:600;}
+  table.scorecard tr.match-status-row td.ms-a{color:var(--a-color);font-weight:700;background:rgba(90,169,230,0.14);}
+  table.scorecard tr.match-status-row td.ms-b{color:var(--gold-bright);font-weight:700;background:rgba(201,169,97,0.14);}
 
   /* score entry v2 */
   .hole-entry{padding:14px;}
@@ -334,6 +346,41 @@ function holeYardage(course, holeIndex){
 }
 
 /* ---------- match play math (best ball, scored hole-by-hole) ---------- */
+// One side's net scores for a hole (best-ball or singles — a singles side
+// is just a team of one). Returns null if that side hasn't fully entered
+// gross scores for this hole yet; does NOT require the other side to be
+// done, so a team's best-ball number can show as soon as its own players
+// are in, independent of how the other team is doing.
+function sideNetScores(match, side, i){
+  var team = side==='A' ? (match.teamA||[]) : (match.teamB||[]);
+  if(!team.length) return null;
+  var h = match.holes && match.holes[String(i+1)];
+  var scores = (h && h.scores) || {};
+  var gross = team.map(function(p){ return scores[p]; });
+  if(gross.some(function(v){ return typeof v!=='number' || v<=0; })) return null;
+
+  var cfg = live.config;
+  var lowHcp = matchLowHandicap(match, cfg);
+  var course = live.courses[match.courseId];
+  var strokeIndex = course && course.holes && course.holes[i] && course.holes[i].strokeIndex;
+  var usingHandicap = lowHcp!==null && !!strokeIndex;
+
+  function net(p){
+    var g = scores[p];
+    if(!usingHandicap) return g;
+    return g - strokesOnHole(playerStrokes(p, cfg, lowHcp), strokeIndex);
+  }
+
+  return { vals: team.map(net), usingHandicap: usingHandicap };
+}
+// A team's best-ball (lowest net) score for one hole — the number shown on
+// the scorecard strip. Independent per side; null until that side's own
+// players have all entered a score for the hole.
+function teamHoleBest(match, side, i){
+  var s = sideNetScores(match, side, i);
+  if(!s) return null;
+  return { best: Math.min.apply(null, s.vals), usingHandicap: s.usingHandicap };
+}
 function holeOutcome(match, i){
   var teamA = match.teamA||[], teamB = match.teamB||[];
   if(!teamA.length || !teamB.length) return null;
@@ -392,9 +439,32 @@ function computeMatch(match){
     }
   } else {
     state='live';
-    label = diff===0 ? ('AS thru '+thru) : (Math.abs(diff)+' UP thru '+thru);
+    label = diff===0 ? ('AS thru '+thru) : ((diff>0?'Youngins':'Vets')+' '+Math.abs(diff)+' UP thru '+thru);
   }
   return { thru:thru, diff:diff, finished:finished, closedEarly:closed && thru<18, state:state, label:label, pointsA:pointsA, pointsB:pointsB };
+}
+
+// The cumulative "who's up" line for the scorecard strip — one entry per
+// hole showing the running match status right after that hole was decided
+// (e.g. "1 UP", "AS"), same clinch-early rule as computeMatch. null for any
+// hole not yet reached or played after the match has already closed out.
+function matchRunningStatus(match){
+  var diff=0, closed=false;
+  var out = [];
+  for(var i=0;i<18;i++){
+    if(closed){ out.push(null); continue; }
+    var outcome = holeOutcome(match, i);
+    if(!outcome){ out.push(null); continue; }
+    var thru = i+1;
+    if(outcome.winner==='A') diff++;
+    else if(outcome.winner==='B') diff--;
+    var remaining = 18 - thru;
+    var side = diff===0 ? 'AS' : (diff>0 ? 'A' : 'B');
+    var label = diff===0 ? 'AS' : (Math.abs(diff)+' UP');
+    out.push({ label: label, side: side });
+    if(Math.abs(diff) > remaining) closed = true;
+  }
+  return out;
 }
 
 /* ---------- Supabase data layer ----------
@@ -817,7 +887,7 @@ function ViewMatches(){
   return html;
 }
 
-function ScorecardStrip(course){
+function ScorecardStrip(course, match){
   var holes = (course && course.holes) || [];
   if(!holes.length) return '';
   var tee = (course && course.displayTee) || (course.tees && course.tees[0]);
@@ -825,7 +895,43 @@ function ScorecardStrip(course){
   var ydsRow = '<tr><th>Yds ('+esc(tee)+')</th>' + holes.map(function(h){ return '<td>'+((h.yardages&&h.yardages[tee])||'—')+'</td>'; }).join('') + '<td><b>'+holes.reduce(function(s,h){return s+((h.yardages&&h.yardages[tee])||0);},0)+'</b></td></tr>';
   var hcpRow = '<tr><th>HCP</th>' + holes.map(function(h){ return '<td>'+(h.strokeIndex||'—')+'</td>'; }).join('') + '<td></td></tr>';
   var headRow = '<tr><th>Hole</th>' + holes.map(function(h){ return '<td>'+h.number+'</td>'; }).join('') + '<td>Tot</td></tr>';
-  return '<div class="scorecard-wrap"><table class="scorecard"><thead>'+headRow+'</thead><tbody>'+parRow+ydsRow+hcpRow+'</tbody></table></div>';
+  var teamRows = '';
+  // Best-ball (2v2) matches get a running "team's low ball" line — the
+  // lower of each team's two NET scores on that hole (handicap strokes
+  // already subtracted), the number that actually decides the hole. You
+  // enter your real, actual gross score; this row does the handicap math
+  // for you so you never have to hand-adjust what you type in.
+  if(match && match.type==='bestball'){
+    function teamRow(side, label, colorClass){
+      var total = 0, anyVal = false;
+      var cells = holes.map(function(h, i){
+        var tb = teamHoleBest(match, side, i);
+        if(!tb) return '<td class="tb-cell tb-empty">—</td>';
+        total += tb.best; anyVal = true;
+        var oc = holeOutcome(match, i);
+        var won = oc && oc.winner===side;
+        return '<td class="tb-cell tb-filled'+(won?' tb-win':'')+'">'+tb.best+'</td>';
+      }).join('');
+      return '<tr class="team-best-row '+colorClass+'"><th>'+esc(label)+'</th>'+cells+'<td><b>'+(anyVal?total:'—')+'</b></td></tr>';
+    }
+    teamRows = teamRow('A','Youngins Best','a') + teamRow('B','Vets Best','b');
+  }
+  // Running "who's up" line — cumulative match status through each hole,
+  // colored by whichever side is ahead at that point (Youngins in blue,
+  // Vets in gold).
+  var statusRow = '';
+  if(match && match.teamA && match.teamA.length && match.teamB && match.teamB.length){
+    var running = matchRunningStatus(match);
+    var statusCells = holes.map(function(h, i){
+      var r = running[i];
+      if(!r) return '<td class="ms-cell ms-empty">—</td>';
+      var cls = r.side==='A' ? 'ms-a' : r.side==='B' ? 'ms-b' : 'ms-as';
+      return '<td class="ms-cell '+cls+'">'+esc(r.label)+'</td>';
+    }).join('');
+    var finalC = computeMatch(match);
+    statusRow = '<tr class="match-status-row"><th>Who’s Up</th>'+statusCells+'<td><b>'+esc(finalC.label||'')+'</b></td></tr>';
+  }
+  return '<div class="scorecard-wrap"><table class="scorecard"><thead>'+headRow+'</thead><tbody>'+parRow+ydsRow+hcpRow+teamRows+statusRow+'</tbody></table></div>';
 }
 
 function ViewMatchDetail(id){
@@ -889,7 +995,7 @@ function ViewMatchDetail(id){
       '<div class="course">'+esc(courseName(m.courseId))+' · '+ (m.type==='singles'?'Singles':'Best Ball') +'</div>'+
       '<div class="status-big">'+ (c.thru? c.label : 'On the Tee') +'</div>'+
       lockedBanner+
-      ScorecardStrip(course)+
+      ScorecardStrip(course, m)+
     '</div>'+
     '<div class="section-label">Enter Scores — Hole by Hole'+(c.finished?' (locked)':'')+'</div>'+
     handicapNote+
