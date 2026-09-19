@@ -353,19 +353,33 @@
    plays off scratch; everyone else in the SAME match gets the difference
    between their handicap and that low player's. Those strokes are then
    taken on the holes ranked hardest by the course's Stroke Index (SI 1 is
-   the hardest hole, so a player getting 6 strokes takes them on SI 1-6). */
+   the hardest hole, so a player getting 6 strokes takes them on SI 1-6).
+
+   Ryder Cup-style allowance: four-ball (best ball) is played at 90% of
+   Course Handicap — each player's handicap is reduced to 90% and rounded
+   *before* comparing to find the match's low man, not after (so the low
+   man is whoever has the lowest ROUNDED 90% value, which can differ from
+   whoever had the lowest raw handicap). Singles is untouched: 100% of raw
+   Course Handicap, rounding only the final low-man difference, exactly as
+   before this allowance existed. */
+function matchIsReduced_(match){
+  return !!(match && match.type==='bestball');
+}
 function matchLowHandicap(match, cfg){
   var players = (match.teamA||[]).concat(match.teamB||[]);
   var hcps = players.map(function(p){ return cfg.handicaps && cfg.handicaps[p]; })
     .filter(function(h){ return typeof h==='number' && !isNaN(h); });
   if(hcps.length < players.length || !players.length) return null;
-  return Math.min.apply(null, hcps);
+  if(!matchIsReduced_(match)) return Math.min.apply(null, hcps);
+  var adjusted = hcps.map(function(h){ return Math.round(h*0.9); });
+  return Math.min.apply(null, adjusted);
 }
-function playerStrokes(player, cfg, lowHcp){
+function playerStrokes(player, cfg, lowHcp, match){
   if(lowHcp===null) return 0;
   var h = cfg.handicaps && cfg.handicaps[player];
   if(typeof h!=='number' || isNaN(h)) return 0;
-  return Math.max(0, Math.round(h - lowHcp));
+  if(!matchIsReduced_(match)) return Math.max(0, Math.round(h - lowHcp));
+  return Math.max(0, Math.round(h*0.9) - lowHcp);
 }
 function strokesOnHole(strokesTotal, strokeIndex){
   if(!strokeIndex || !strokesTotal) return 0;
@@ -404,7 +418,7 @@ function sideNetScores(match, side, i){
   function net(p){
     var g = scores[p];
     if(!usingHandicap) return g;
-    return g - strokesOnHole(playerStrokes(p, cfg, lowHcp), strokeIndex);
+    return g - strokesOnHole(playerStrokes(p, cfg, lowHcp, match), strokeIndex);
   }
 
   return { vals: team.map(net), usingHandicap: usingHandicap };
@@ -435,7 +449,7 @@ function holeOutcome(match, i){
   function net(p){
     var g = scores[p];
     if(!usingHandicap) return g;
-    return g - strokesOnHole(playerStrokes(p, cfg, lowHcp), strokeIndex);
+    return g - strokesOnHole(playerStrokes(p, cfg, lowHcp, match), strokeIndex);
   }
 
   var aVals = teamA.map(net), bVals = teamB.map(net);
@@ -865,7 +879,7 @@ function playerRoundScore(match, name){
     if(typeof v==='number' && v>0){
       total += v; thru++;
       var si = course && course.holes && course.holes[i-1] && course.holes[i-1].strokeIndex;
-      var strokes = (lowHcp!==null && si) ? strokesOnHole(playerStrokes(name, cfg, lowHcp), si) : 0;
+      var strokes = (lowHcp!==null && si) ? strokesOnHole(playerStrokes(name, cfg, lowHcp, match), si) : 0;
       net += (v - strokes);
     }
   }
@@ -1104,7 +1118,7 @@ function ViewMatchDetail(id){
     function strokesFor(p, holeIdx){
       if(!handicapsReady) return 0;
       var si = course.holes && course.holes[holeIdx] && course.holes[holeIdx].strokeIndex;
-      return strokesOnHole(playerStrokes(p, live.config, lowHcp), si);
+      return strokesOnHole(playerStrokes(p, live.config, lowHcp, m), si);
     }
     // Blatant on purpose: a filled gold pill with the word STROKE(S) right on
     // the player's row, not a subtle dot — this is the one thing a player
@@ -1113,7 +1127,7 @@ function ViewMatchDetail(id){
       var n = strokesFor(p, holeIdx);
       if(!n) return '';
       var dots = n<=3 ? new Array(n+1).join('●') : ('●×'+n);
-      return '<span class="stroke-chip" title="Gets '+n+' stroke'+(n>1?'s':'')+' on this hole">'+dots+' '+(n>1?'STROKES':'STROKE')+'</span>';
+      return '<span class="stroke-chip" title="Gets '+n+' stroke'+(n>1?'s':'')+' on this hole">\u{1F36C} '+dots+' '+(n>1?'STROKES':'STROKE')+'</span>';
     }
     function playerRow(p, side, i, hk){
       var val = (m.holes[hk] && m.holes[hk].scores && m.holes[hk].scores[p]);
@@ -1159,7 +1173,7 @@ function ViewMatchDetail(id){
   if(!noPairings){
     if(handicapsReady){
       var strokeParts = m.teamA.concat(m.teamB).map(function(p){
-        var n = playerStrokes(p, live.config, lowHcp);
+        var n = playerStrokes(p, live.config, lowHcp, m);
         return n>0 ? '<b>'+esc(p)+'</b> +'+n : null;
       }).filter(Boolean);
       strokeSummary = '<div class="stroke-summary">'+(strokeParts.length ? '⛳ Strokes today — '+strokeParts.join('&nbsp;&nbsp;·&nbsp;&nbsp;') : 'Handicaps are even here — playing scratch, no strokes given.')+'</div>';
