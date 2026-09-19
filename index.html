@@ -1145,17 +1145,26 @@ function MatchRowHtml(m, opts){
 }
 
 function ViewMatches(){
-  var rounds = [1,2,3];
-  var titles = {1:'Round 1 · Best Ball',2:'Round 2 · Best Ball',3:'Round 3 · Singles'};
-  var html = '';
-  rounds.forEach(function(r){
-    html += '<div class="section-label">'+titles[r]+'</div><div class="stack">';
-    matchList().filter(function(m){return m.round===r;}).forEach(function(m){
-      html += MatchRowHtml(m);
-    });
-    html += '</div>';
-  });
-  return html;
+  var rounds = [
+    {n:1,label:'Round 1',sub:'Best Ball'},
+    {n:2,label:'Round 2',sub:'Best Ball'},
+    {n:3,label:'Round 3',sub:'Singles'}
+  ];
+  // Same round-header component as the Score page (opaque white bar, not
+  // the plain section-label) so it's legible against the photo backdrop
+  // here too, instead of just a caption sitting directly on it.
+  return rounds.map(function(r){
+    var rt = roundTotals(r.n);
+    var matchesHtml = matchList().filter(function(m){return m.round===r.n;})
+      .map(function(m){ return MatchRowHtml(m); }).join('');
+    return '<div class="round-block">'+
+      '<div class="round-header">'+
+        '<div class="rtitle">'+r.label+' · '+r.sub+'</div>'+
+        '<div class="rscore-mini"><span class="a tnum">'+rt.pa+'</span><span class="sep">–</span><span class="b tnum">'+rt.pb+'</span></div>'+
+      '</div>'+
+      '<div class="stack">'+matchesHtml+'</div>'+
+    '</div>';
+  }).join('<hr class="div">');
 }
 function ScorecardStrip(course, match){
   var holes = (course && course.holes) || [];
