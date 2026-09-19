@@ -174,12 +174,18 @@
 
   /* BY ROUND (live scores live here now) */
   .round-block{display:flex;flex-direction:column;gap:10px;}
-  .round-header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;row-gap:4px;column-gap:10px;padding:2px 4px;}
-  .round-header .rtitle{
-    font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.05em;
-    text-shadow:0 0 6px var(--bg), 0 0 6px var(--bg), 1px 1px 0 var(--bg), -1px -1px 0 var(--bg), 1px -1px 0 var(--bg), -1px 1px 0 var(--bg);
+  /* A real backdrop, not just a text-shadow halo — the round/format/course
+     line sits directly on the photo background, and depending on scroll
+     position that could be sky, treeline, or the logo itself, so a soft
+     glow alone wasn't reliably enough contrast. An opaque bar guarantees it
+     regardless of what's behind it. */
+  .round-header{
+    display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;
+    row-gap:4px;column-gap:10px;padding:9px 12px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    box-shadow:0 2px 8px rgba(28,37,54,0.08);
   }
-  .round-header .rscore-mini{text-shadow:0 0 6px var(--bg), 0 0 6px var(--bg), 1px 1px 0 var(--bg), -1px -1px 0 var(--bg), 1px -1px 0 var(--bg), -1px 1px 0 var(--bg);}
+  .round-header .rtitle{font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.05em;}
   .round-header .rtitle b{color:var(--gold-text);}
   .round-header .rscore-mini{font-family:var(--font-display);font-size:20px;flex:none;}
   .round-header .rscore-mini .a{color:var(--a-text);}
@@ -1276,9 +1282,9 @@ function ViewMatchDetail(id){
     if(handicapsReady){
       var strokeParts = m.teamA.concat(m.teamB).map(function(p){
         var n = playerStrokes(p, live.config, lowHcp, m);
-        return n>0 ? '<b>'+esc(p)+'</b> +'+n : null;
+        return n>0 ? '<b>'+esc(p)+'</b> \u{1F36C} '+n : null;
       }).filter(Boolean);
-      strokeSummary = '<div class="stroke-summary">'+(strokeParts.length ? '⛳ Strokes today — '+strokeParts.join('&nbsp;&nbsp;·&nbsp;&nbsp;') : 'Handicaps are even here — playing scratch, no strokes given.')+'</div>';
+      strokeSummary = '<div class="stroke-summary">'+(strokeParts.length ? '\u{1F36C} Candy Counter — '+strokeParts.join('&nbsp;&nbsp;·&nbsp;&nbsp;') : 'Handicaps are even here — playing scratch, no strokes given.')+'</div>';
     } else {
       strokeSummary = '<div class="hcp-note">Playing scratch (gross scores) — add everyone’s handicap in Admin → Roster to score this match net.</div>';
     }
