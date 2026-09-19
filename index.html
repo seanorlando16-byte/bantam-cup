@@ -244,6 +244,8 @@
     font-family:var(--font-mono);font-size:12px;text-align:center;flex:none;width:auto;
     padding:5px 10px;border-radius:8px;background:var(--panel-recessed);border:1px solid var(--line);white-space:nowrap;
   }
+  .matchup .status.lead-a{background:rgba(90,169,230,0.16);border-color:rgba(90,169,230,0.45);color:var(--a-text);font-weight:700;}
+  .matchup .status.lead-b{background:rgba(201,169,97,0.2);border-color:rgba(201,169,97,0.5);color:var(--gold-text);font-weight:700;}
 
   /* MATCH DETAIL */
   /* Pinned below the topbar (its exact `top` offset is set in JS, from the
@@ -941,9 +943,8 @@ function playerRoundScore(match, name){
 }
 function formatRoundScore(rs){
   if(!rs || rs.thru===0) return '—';
-  var g = rs.total + (rs.thru<18 ? (' thru '+rs.thru) : '');
-  if(rs.net!==rs.total) return g + ' / ' + rs.net;
-  return g;
+  var g = (rs.net!==rs.total) ? (rs.total+'/'+rs.net) : String(rs.total);
+  return g + (rs.thru<18 ? (' thru '+rs.thru) : '');
 }
 function playerRoundLines(name){
   var byRound = {};
@@ -1131,12 +1132,13 @@ function MatchRowHtml(m, opts){
   var pillClass = c.state;
   var pillText = c.state==='live'?'<span class="dot"></span>Live':c.state==='completed'?'Final':'Upcoming';
   var tag = (opts && opts.tag) || esc(courseName(m.courseId));
-  var rowClass = 'card matchrow '+matchLeadClass(c)+(c.state==='live'?' is-live':'');
+  var lead = matchLeadClass(c);
+  var rowClass = 'card matchrow '+lead+(c.state==='live'?' is-live':'');
   return '<div class="'+rowClass+'" data-nav="match/'+m.id+'">'+
     '<div class="mtop"><span class="mcourse">'+tag+'</span>'+
     '<span class="pill '+pillClass+'">'+pillText+'</span></div>'+
     '<div class="matchup"><div class="side a"><span class="lbl">Y</span> '+esc(tn.a)+'</div>'+
-    '<div class="status tnum">'+c.label+'</div>'+
+    '<div class="status tnum '+lead+'">'+c.label+'</div>'+
     '<div class="side b">'+esc(tn.b)+' <span class="lbl">V</span></div></div>'+
     '</div>';
 }
