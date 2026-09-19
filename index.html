@@ -229,7 +229,19 @@
   }
 
   /* MATCH DETAIL */
-  .backlink{display:inline-flex;align-items:center;gap:6px;color:var(--ink-dim);font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;background:none;border:none;cursor:pointer;padding:4px 0;}
+  /* Pinned below the topbar (its exact `top` offset is set in JS, from the
+     topbar's real rendered height, since that height isn't fixed — the
+     subtitle wraps to a second line on narrow screens). Scrolling 18 holes
+     deep into a match used to strand this behind you; now it rides along
+     just under the header the whole way down. */
+  .backlink{
+    position:sticky;z-index:15;
+    display:flex;align-items:center;gap:6px;color:var(--ink-dim);font-family:var(--font-mono);
+    font-size:12px;text-transform:uppercase;letter-spacing:0.05em;
+    background:var(--bg);border:none;cursor:pointer;
+    margin:0 -16px 10px;padding:10px 16px;
+    box-shadow:0 4px 10px rgba(28,37,54,0.06);
+  }
   .detail-head{text-align:center;padding:18px 12px;}
   .detail-head .vsline{font-size:15px;line-height:1.5;}
   .detail-head .vsline b.a{color:var(--a-text);}
@@ -956,6 +968,16 @@ var Router = {
     }
     app.innerHTML = Header() + body;
     app.insertAdjacentHTML('beforeend', TabBar(this.route.name));
+    // The backlink (match detail's "All Matches" bar) sticks right under
+    // the topbar — but the topbar's own height isn't fixed (its subtitle
+    // wraps to a second line on narrow screens), so its stick point is
+    // measured from the real rendered topbar rather than assumed.
+    var backEl = document.querySelector('.backlink');
+    if(backEl){
+      var topbarEl = document.querySelector('.topbar');
+      var topbarH = topbarEl ? topbarEl.getBoundingClientRect().height : 0;
+      backEl.style.top = 'calc(env(safe-area-inset-top, 0px) + ' + topbarH + 'px)';
+    }
     wireEvents(this.route);
   }
 };
