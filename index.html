@@ -248,6 +248,14 @@
   .matchup .status.lead-a{background:rgba(90,169,230,0.16);border-color:rgba(90,169,230,0.45);color:var(--a-text);font-weight:700;}
   .matchup .status.lead-b{background:rgba(201,169,97,0.2);border-color:rgba(201,169,97,0.5);color:var(--gold-text);font-weight:700;}
 
+  /* Hole-flow dots — one per hole, centered under the status box, so the
+     shape of a match (a back-and-forth vs. a runaway) is visible at a
+     glance from the list view without opening the match. */
+  .hole-flow{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin-top:10px;}
+  .hole-flow .hf-dot{width:9px;height:9px;border-radius:50%;flex:none;background:rgba(28,37,54,0.13);}
+  .hole-flow .hf-dot.hf-a{background:var(--a-color);}
+  .hole-flow .hf-dot.hf-b{background:var(--gold);}
+
   /* MATCH DETAIL */
   /* Pinned below the topbar (its exact `top` offset is set in JS, from the
      topbar's real rendered height, since that height isn't fixed — the
@@ -1131,6 +1139,19 @@ function matchLeadClass(c){
   if(c.state==='completed') return c.pointsA>c.pointsB?'lead-a':c.pointsB>c.pointsA?'lead-b':'';
   return '';
 }
+// One dot per hole — blue if the Youngins took it, gold if the Vets took
+// it, neutral if it was halved or hasn't been decided yet. Lets you read
+// the shape of a match (a seesaw vs. a runaway) at a glance from a list of
+// cards, without opening it.
+function holeFlowHtml(m){
+  var dots = '';
+  for(var i=0;i<18;i++){
+    var oc = holeOutcome(m, i);
+    var cls = oc && oc.winner==='A' ? ' hf-a' : oc && oc.winner==='B' ? ' hf-b' : '';
+    dots += '<span class="hf-dot'+cls+'"></span>';
+  }
+  return '<div class="hole-flow">'+dots+'</div>';
+}
 function MatchRowHtml(m, opts){
   var c = computeMatch(m);
   var tn = teamNames(m);
@@ -1138,6 +1159,7 @@ function MatchRowHtml(m, opts){
   var pillText = c.state==='live'?'<span class="dot"></span>Live':c.state==='completed'?'Final':'Upcoming';
   var tag = (opts && opts.tag) || esc(courseName(m.courseId));
   var lead = matchLeadClass(c);
+  var hasPairings = m.teamA && m.teamA.length && m.teamB && m.teamB.length;
   var rowClass = 'card matchrow '+lead+(c.state==='live'?' is-live':'');
   return '<div class="'+rowClass+'" data-nav="match/'+m.id+'">'+
     '<div class="mtop"><span class="mcourse">'+tag+'</span>'+
@@ -1145,6 +1167,7 @@ function MatchRowHtml(m, opts){
     '<div class="matchup"><div class="side a"><span class="lbl">Y</span> '+esc(tn.a)+'</div>'+
     '<div class="status tnum '+lead+'">'+c.label+'</div>'+
     '<div class="side b">'+esc(tn.b)+' <span class="lbl">V</span></div></div>'+
+    (hasPairings ? holeFlowHtml(m) : '')+
     '</div>';
 }
 
