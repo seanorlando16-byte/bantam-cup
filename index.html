@@ -1037,14 +1037,18 @@ function ViewBoard(){
   var winner = tot.pa>=6.5 ? 'a' : tot.pb>=6.5 ? 'b' : (tot.pa===6 && tot.pb===6 ? 'tie' : null);
   var clockText = tot.decided===0 ? 'Puck drop pending' : (tot.decided===12 ? 'Final horn' : (tot.decided+' of 12 matches decided'));
 
+  // Real Ryder Cup rule, carried over on purpose: the defending team keeps
+  // the cup on a tie rather than the match being a stalemate — the
+  // challenger has to actually win it outright (6.5+), not just match
+  // them. The Youngins are the 3-time defending champs, so 6-6 is theirs.
   var goalLight = '';
   if(winner==='a') goalLight = '<div class="goal-light">\u{1F6A8} THE YOUNGINS WIN THE CUP \u{1F6A8}</div>';
   else if(winner==='b') goalLight = '<div class="goal-light">\u{1F6A8} THE VETS WIN THE CUP \u{1F6A8}</div>';
-  else if(winner==='tie') goalLight = '<div class="goal-light">CUP RETAINED · 6–6 TIE</div>';
+  else if(winner==='tie') goalLight = '<div class="goal-light">\u{1F6A8} THE YOUNGINS RETAIN THE CUP · 6–6 TIE \u{1F6A8}</div>';
 
   var rounds = [
-    {n:1,label:'Round 1',sub:'Best Ball',courseId:'tobacco-road'},
-    {n:2,label:'Round 2',sub:'Best Ball',courseId:'talamore'},
+    {n:1,label:'Round 1',sub:'Four Ball',courseId:'tobacco-road'},
+    {n:2,label:'Round 2',sub:'Four Ball',courseId:'talamore'},
     {n:3,label:'Round 3',sub:'Singles',courseId:'mid-south'}
   ];
   // Live scores live here now (there's no separate Live tab): each round's
@@ -1146,8 +1150,8 @@ function MatchRowHtml(m, opts){
 
 function ViewMatches(){
   var rounds = [
-    {n:1,label:'Round 1',sub:'Best Ball'},
-    {n:2,label:'Round 2',sub:'Best Ball'},
+    {n:1,label:'Round 1',sub:'Four Ball'},
+    {n:2,label:'Round 2',sub:'Four Ball'},
     {n:3,label:'Round 3',sub:'Singles'}
   ];
   // Same round-header component as the Score page (opaque white bar, not
@@ -1299,7 +1303,7 @@ function ViewMatchDetail(id){
     '<button class="backlink" data-nav="matches">← All Matches</button>'+
     '<div class="card detail-head">'+
       '<div class="vsline"><b class="a">'+esc(tn.a)+'</b><br><span style="color:var(--ink-dim);font-family:var(--font-mono);font-size:11px;">VS</span><br><b class="b">'+esc(tn.b)+'</b></div>'+
-      '<div class="course">'+esc(courseName(m.courseId))+' · '+ (m.type==='singles'?'Singles':'Best Ball') +'</div>'+
+      '<div class="course">'+esc(courseName(m.courseId))+' · '+ (m.type==='singles'?'Singles':'Four Ball') +'</div>'+
       '<div class="status-big">'+ (c.thru? c.label : 'On the Tee') +'</div>'+
       lockedBanner+
       strokeSummary+
@@ -1347,7 +1351,7 @@ function AdminPairings(){
   var cfg = live.config;
   var html = '';
   [1,2,3].forEach(function(r){
-    html += '<div class="section-label">Round '+r+' '+(r===3?'(Singles)':'(Best Ball)')+'</div><div class="stack">';
+    html += '<div class="section-label">Round '+r+' '+(r===3?'(Singles)':'(Four Ball)')+'</div><div class="stack">';
     matchList().filter(function(m){return m.round===r;}).forEach(function(m){
       var count = m.type==='singles'?1:2;
       html += '<div class="card admin-block" data-match-admin="'+m.id+'">';
