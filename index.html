@@ -251,10 +251,14 @@
   /* Hole-flow dots — one per hole, centered under the status box, so the
      shape of a match (a back-and-forth vs. a runaway) is visible at a
      glance from the list view without opening the match. */
-  .hole-flow{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin-top:10px;}
-  .hole-flow .hf-dot{width:9px;height:9px;border-radius:50%;flex:none;background:rgba(28,37,54,0.13);}
-  .hole-flow .hf-dot.hf-a{background:var(--a-color);}
-  .hole-flow .hf-dot.hf-b{background:var(--gold);}
+  .hole-flow{display:flex;justify-content:center;flex-wrap:wrap;gap:3px;margin-top:10px;}
+  .hole-flow .hf-dot{
+    width:16px;height:16px;border-radius:50%;flex:none;background:rgba(28,37,54,0.12);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-size:8px;font-weight:700;color:var(--ink-dim);line-height:1;
+  }
+  .hole-flow .hf-dot.hf-a{background:var(--a-color);color:#fff;}
+  .hole-flow .hf-dot.hf-b{background:var(--gold);color:var(--navy-deep);}
 
   /* MATCH DETAIL */
   /* Pinned below the topbar (its exact `top` offset is set in JS, from the
@@ -1148,7 +1152,7 @@ function holeFlowHtml(m){
   for(var i=0;i<18;i++){
     var oc = holeOutcome(m, i);
     var cls = oc && oc.winner==='A' ? ' hf-a' : oc && oc.winner==='B' ? ' hf-b' : '';
-    dots += '<span class="hf-dot'+cls+'"></span>';
+    dots += '<span class="hf-dot'+cls+'">'+(i+1)+'</span>';
   }
   return '<div class="hole-flow">'+dots+'</div>';
 }
